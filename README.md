@@ -1,41 +1,40 @@
-# 7COM1039 Masters Project
+# Crop Yield Prediction using Ensemble Machine Learning
 
 MSc Advanced Computer Science Masters Project  
-University of Hertfordshire
+University of Hertfordshire  
 
-## Overview
-This repository contains the code, notebooks, documentation, and supporting materials for my MSc Masters Project.
+Student: Sandeep Kumar Yadav Gandu  
+Student ID: 23067307  
+Supervisor: Dr. Yar Muhammad  
 
-The project focuses on applying data science and machine learning techniques to analyse datasets and build predictive models.
+---
 
-## Project Structure
+## Project Overview
 
-data/  
-Datasets used for analysis
+This project focuses on predicting crop yield in India using machine learning and ensemble-based models. Agriculture plays a critical role in India's economy, and accurate crop yield prediction can support better planning, food security, and policy decisions.
 
-src/  
-Python scripts for preprocessing, modelling, and evaluation
+The project compares traditional statistical methods with modern machine learning algorithms to determine which models provide the most accurate predictions for crop yield.
 
-notebooks/  
-Jupyter notebooks used for experimentation and analysis
+---
 
-figures/  
-Generated plots and visualisations
+## Dataset
 
-reports/  
-Project documentation and reports
+The dataset used in this project is the **Crop Production Statistics – India dataset (APY.csv)** obtained from Kaggle.
 
-docs/  
-Additional project materials
+It contains agricultural records including:
 
-## Technologies Used
+- State
+- District
+- Crop
+- Crop Year
+- Season
+- Area cultivated
+- Production
+- Yield
 
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- Matplotlib
-- Jupyter Notebook
+The dataset includes over **170,000 records** of crop production data across Indian states.
+
+---
 
 ## Project Workflow
 
@@ -49,6 +48,65 @@ The project follows a standard machine learning pipeline:
 6. Model comparison and interpretation
 
 ![Workflow](figures/project_workflow.png)
+
+
+## Machine Learning Models Used
+
+The following models were implemented and compared:
+
+- Linear Regression (baseline)
+- Random Forest Regressor
+- Extra Trees Regressor
+- Histogram Gradient Boosting Regressor
+
+---
+
+## Evaluation Metrics
+
+Model performance was evaluated using:
+
+- R² Score
+- Mean Absolute Error (MAE)
+- Root Mean Squared Error (RMSE)
+
+---
+
+## Key Results
+
+The ensemble models significantly outperformed the baseline regression model.
+
+Best performing model:
+
+Random Forest Regressor  
+R² Score ≈ 0.96
+
+This demonstrates that ensemble learning methods can effectively capture complex nonlinear relationships in agricultural data.
+
+---
+
+## Technologies Used
+
+Python  
+Pandas  
+NumPy  
+Scikit-learn  
+Matplotlib  
+Seaborn  
+Jupyter Notebook  
+
+---
+
+
+## Future Work
+
+Future improvements may include:
+
+- Adding climate variables such as rainfall and temperature
+- Incorporating remote sensing data
+- Using deep learning models
+- Deploying the model as a predictive tool for agricultural planning
+
+---
 
 ## Author
 
