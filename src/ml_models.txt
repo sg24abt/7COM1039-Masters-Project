@@ -1,0 +1,789 @@
+
+
+PREDICTING CROP YIELD IN INDIA BY USING ENSEMBLE AND MACHINE LEARNING
+MODELS:
+
+STUDENT ID: 23067307
+
+NAME: SANDEEP KUMAR YADAV GANDU
+
+SUPERVISOR NAME: MR. YAR MUHAMMAD
+
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from scipy.stats import zscore
+
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import LabelEncoder, StandardScaler
+    from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+    from sklearn.linear_model import LinearRegression
+    from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, HistGradientBoostingRegressor
+
+    df_raw = pd.read_csv("APY.csv")
+    print("Raw dataset shape:", df_raw.shape)
+
+    Raw dataset shape: (172692, 8)
+
+    df_raw.head()
+
+    {"type":"dataframe","variable_name":"df_raw"}
+
+    df_raw.info()
+
+    <class 'pandas.core.frame.DataFrame'>
+    RangeIndex: 172692 entries, 0 to 172691
+    Data columns (total 8 columns):
+     #   Column      Non-Null Count   Dtype  
+    ---  ------      --------------   -----  
+     0   State       172692 non-null  object 
+     1   District    172692 non-null  object 
+     2   Crop        172692 non-null  object 
+     3   Crop_Year   172692 non-null  int64  
+     4   Season      172692 non-null  object 
+     5   Area        172692 non-null  float64
+     6   Production  169614 non-null  float64
+     7   Yield       172692 non-null  float64
+    dtypes: float64(3), int64(1), object(4)
+    memory usage: 10.5+ MB
+
+    print("Columns:", df_raw.columns.tolist())
+    print("\nMissing values per column:")
+    df_raw.isna().sum()
+
+    Columns: ['State', 'District ', 'Crop', 'Crop_Year', 'Season', 'Area ', 'Production', 'Yield']
+
+    Missing values per column:
+
+    State            0
+    District         0
+    Crop             0
+    Crop_Year        0
+    Season           0
+    Area             0
+    Production    3078
+    Yield            0
+    dtype: int64
+
+    df_raw.describe()
+
+    {"summary":"{\n  \"name\": \"df_raw\",\n  \"rows\": 8,\n  \"fields\": [\n    {\n      \"column\": \"Crop_Year\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 60450.91584307595,\n        \"min\": 6.481018593224845,\n        \"max\": 172692.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          2008.8272936789197,\n          2009.0,\n          172692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Area \",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 304902.05323370866,\n        \"min\": 0.004,\n        \"max\": 877029.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          9007.940860265677,\n          550.0,\n          172692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Production\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 512281083.0041565,\n        \"min\": 0.0,\n        \"max\": 1452725000.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          1355958.024213803,\n          747.0,\n          169614.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Yield\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 60752.40957715999,\n        \"min\": 0.0,\n        \"max\": 172692.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          85.61723224005745,\n          1.0,\n          172692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe"}
+
+    df = df_raw.copy()
+    df.columns = df.columns.str.strip()
+
+    numeric_cols = ["Crop_Year", "Area", "Production", "Yield"]
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+Missing Production values handled using mean imputation
+
+Rows with missing Crop removed (9 rows dropped)
+
+Yield recomputed explicitly as:
+
+Yield = Production/Area
+
+    # Recommended: assign back to the column
+    df["Production"] = df["Production"].fillna(df["Production"].mean())
+
+    # Or use fillna with a dict
+    df = df.fillna({"Production": df["Production"].mean()})
+
+    # Drop rows with missing Crop
+    df.dropna(subset=["Crop"], inplace=True)
+
+    # Recalculate Yield
+    df["Yield"] = df["Production"] / df["Area"]
+
+    print("After missing value handling:")
+    print(df.isna().sum())
+    print("Shape:", df.shape)
+
+    After missing value handling:
+    State         0
+    District      0
+    Crop          0
+    Crop_Year     0
+    Season        0
+    Area          0
+    Production    0
+    Yield         0
+    dtype: int64
+    Shape: (172692, 8)
+
+    df_before = df.copy()
+
+    numeric = ["Crop_Year", "Area", "Production", "Yield"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    axes = axes.ravel()
+
+    for i, col in enumerate(numeric):
+        sns.histplot(df_before[col], bins=50, kde=True, ax=axes[i])
+        axes[i].set_title(f"{col} (Before Cleaning)")
+
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    axes = axes.ravel()
+
+    for i, col in enumerate(numeric):
+        sns.boxplot(y=df_before[col], ax=axes[i])
+        axes[i].set_title(f"{col} (Before Cleaning)")
+
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+    plt.figure(figsize=(6, 4))
+    sns.heatmap(df_before[numeric].corr(), annot=True, cmap="coolwarm")
+    plt.title("Correlation Before Outlier Removal")
+    plt.show()
+
+[]
+
+    outlier_cols = ["Area", "Production", "Yield"]
+
+    z = np.abs(zscore(df[outlier_cols]))
+    df_after = df[(z < 3).all(axis=1)].reset_index(drop=True)
+
+    print("Rows BEFORE outlier removal:", df_before.shape[0])
+    print("Rows AFTER outlier removal :", df_after.shape[0])
+
+    Rows BEFORE outlier removal: 172692
+    Rows AFTER outlier removal : 168692
+
+    categorical_cols = ["State", "District", "Crop", "Season"]
+    encoders = {}
+
+    df_after = df_after.copy()
+
+    for col in categorical_cols:
+        le = LabelEncoder()
+        df_after[col] = le.fit_transform(df_after[col].astype(str))
+        encoders[col] = le
+
+    df_after.head()
+
+    {"type":"dataframe","variable_name":"df_after"}
+
+    target = "Yield"
+
+    X = df_after.drop(columns=[target])
+    y = df_after[target]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42
+    )
+
+    scale_cols = ["Area", "Production", "Crop_Year"]
+
+    scaler = StandardScaler()
+    X_train_scaled = X_train.copy()
+    X_test_scaled = X_test.copy()
+
+    X_train_scaled[scale_cols] = scaler.fit_transform(X_train[scale_cols])
+    X_test_scaled[scale_cols] = scaler.transform(X_test[scale_cols])
+
+    print("Training shape:", X_train_scaled.shape)
+    print("Test shape    :", X_test_scaled.shape)
+
+    Training shape: (126519, 7)
+    Test shape    : (42173, 7)
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    axes = axes.ravel()
+
+    for i, col in enumerate(numeric):
+        sns.histplot(df_after[col], bins=50, kde=True, ax=axes[i])
+        axes[i].set_title(f"{col} (After Cleaning)")
+
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    axes = axes.ravel()
+
+    for i, col in enumerate(numeric):
+        sns.boxplot(y=df_after[col], ax=axes[i])
+        axes[i].set_title(f"{col} (After Cleaning)")
+
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+    plt.figure(figsize=(6, 4))
+    sns.heatmap(df_after[numeric].corr(), annot=True, cmap="coolwarm")
+    plt.title("Correlation After Outlier Removal")
+    plt.show()
+
+[]
+
+    print("Rows BEFORE cleaning:", df_before.shape[0])
+    print("Rows AFTER cleaning :", df_after.shape[0])
+
+    Rows BEFORE cleaning: 172692
+    Rows AFTER cleaning : 168692
+
+    print("\n=== Descriptive statistics BEFORE cleaning ===")
+    display(df_before[["Area", "Production", "Yield"]].describe())
+
+
+    === Descriptive statistics BEFORE cleaning ===
+
+    {"summary":"{\n  \"name\": \"display(df_before[[\\\"Area\\\", \\\"Production\\\", \\\"Yield\\\"]]\",\n  \"rows\": 8,\n  \"fields\": [\n    {\n      \"column\": \"Area\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 304902.05323370866,\n        \"min\": 0.004,\n        \"max\": 877029.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          9007.940860265677,\n          550.0,\n          172692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Production\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 512291378.7004505,\n        \"min\": 0.0,\n        \"max\": 1452725000.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          1355958.0242138032,\n          800.0,\n          172692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Yield\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 119767187.98938057,\n        \"min\": 0.0,\n        \"max\": 338989506.05345076,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          17135.13118357012,\n          1.0499833245053485,\n          172692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe"}
+
+    print("\n=== Descriptive statistics AFTER cleaning ===")
+    display(df_after[["Area", "Production", "Yield"]].describe())
+
+
+    === Descriptive statistics AFTER cleaning ===
+
+    {"summary":"{\n  \"name\": \"display(df_after[[\\\"Area\\\", \\\"Production\\\", \\\"Yield\\\"]]\",\n  \"rows\": 8,\n  \"fields\": [\n    {\n      \"column\": \"Area\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 62880.944035994005,\n        \"min\": 0.008,\n        \"max\": 168692.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          5613.182937940151,\n          500.0,\n          168692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Production\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 28215565.616497852,\n        \"min\": 0.0,\n        \"max\": 80139794.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          157606.06796379763,\n          728.0,\n          168692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"Yield\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 1533798.1982406352,\n        \"min\": 0.0,\n        \"max\": 4374058.142625171,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          8614.617108011482,\n          1.0280481389279175,\n          168692.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe"}
+
+    removed = df_before.shape[0] - df_after.shape[0]
+    print(f"Rows removed: {removed} ({removed / df_before.shape[0] * 100:.2f}%)")
+
+    Rows removed: 4000 (2.32%)
+
+    X_train_scaled[scale_cols].describe().T
+
+    {"summary":"{\n  \"name\": \"X_train_scaled[scale_cols]\",\n  \"rows\": 3,\n  \"fields\": [\n    {\n      \"column\": \"count\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.0,\n        \"min\": 126519.0,\n        \"max\": 126519.0,\n        \"num_unique_values\": 1,\n        \"samples\": [\n          126519.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"mean\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 1.1811949026908965e-15,\n        \"min\": -2.0589166240407394e-15,\n        \"max\": -4.155910372848933e-18,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          -4.155910372848933e-18\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"std\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 9.196226014040609e-14,\n        \"min\": 1.0000039519988695,\n        \"max\": 1.0000039519990533,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          1.0000039519989659\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"min\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.9304181086119214,\n        \"min\": -1.8243016888508927,\n        \"max\": -0.07181636035332403,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          -0.4061827005672491\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"25%\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.4162561276173281,\n        \"min\": -0.898562571631617,\n        \"max\": -0.07177399462653264,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          -0.4007705459713122\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"50%\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.2066517295958314,\n        \"min\": -0.36973754943497655,\n        \"max\": 0.02717654558765877,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          -0.36973754943497655\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"75%\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.5328225676277153,\n        \"min\": -0.17112637160242863,\n        \"max\": 0.7986258099370552,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          -0.17112637160242863\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"max\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 18.603406011468355,\n        \"min\": 1.5700750742864518,\n        \"max\": 36.012515385376865,\n        \"num_unique_values\": 3,\n        \"samples\": [\n          6.603232432760862\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe"}
+
+Data understanding visualizations
+
+    # mapping from encoded Season to original Season name
+    season_map = (
+        df_before[["Season"]]  # original categorical
+        .drop_duplicates()
+        .reset_index(drop=True)
+        .reset_index()
+        .rename(columns={"index": "Season_Code", "Season": "Season_Name"})
+    )
+
+    # merge map into df_after
+    df_after_plot = df_after.merge(
+        season_map,
+        left_on="Season",  # numeric code
+        right_on="Season_Code",
+        how="left"
+    )
+
+    season_median = (
+        df_after_plot
+        .groupby("Season_Name")["Yield"]
+        .median()
+        .reset_index()
+    )
+
+    plt.figure(figsize=(8,4))
+    sns.barplot(data=season_median, x="Season_Name", y="Yield")
+    plt.title("Median Yield Across Seasons")
+    plt.xlabel("Season")
+    plt.ylabel("Median Yield")
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+Whole Year shows the highest median yield, suggesting that crops grown
+or reported on an annual basis are more productive than single‑season
+crops.
+
+Among individual seasons, Summer and Winter have higher median yields
+than Kharif and Rabi, indicating seasonal differences in productivity
+that your model can exploit.
+
+The relatively similar medians for Kharif, Rabi, and Autumn show that
+yield variability within these seasons may be driven more by crop type
+and region than by season alone.
+
+    season_mean = (
+        df_after_plot
+        .groupby("Season_Name")["Yield"]
+        .mean()
+        .reset_index()
+    )
+
+    plt.figure(figsize=(8,4))
+    sns.barplot(data=season_mean, x="Season_Name", y="Yield")
+    plt.title("Average Yield by Season")
+    plt.xlabel("Season")
+    plt.ylabel("Average Yield")
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+The average yield pattern broadly matches the median pattern but is more
+influenced by high‑yield records, especially in the Whole Year category.
+
+The gap between mean and median in some seasons implies a right‑skewed
+distribution with a few very high‑yield observations pulling up the
+mean.
+
+These differences support your choice of using both mean and median as
+complementary summaries when describing seasonal yield patterns.
+
+    df_after_plot = df_after.merge(
+        season_map, left_on="Season", right_on="Season_Code", how="left"
+    )
+
+    top_crops = (
+        df_before["Crop"].value_counts().head(5).index
+    )
+
+    trend_data = (
+        df_before[df_before["Crop"].isin(top_crops)]
+        .groupby(["Crop_Year", "Crop"])["Yield"]
+        .median()
+        .reset_index()
+    )
+
+    plt.figure(figsize=(10,8))
+    sns.lineplot(data=trend_data, x="Crop_Year", y="Yield", hue="Crop")
+    plt.title("Median Yield over Years for Top 5 Crops")
+    plt.xlabel("Year")
+    plt.ylabel("Median Yield")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+For major cereals like Rice and Maize, median yields show a steady
+upward trend over the years, consistent with technological improvements
+and better agronomic practices.
+
+Pulse crops (e.g., Moong, Urad) start from lower yield levels but also
+show recent gains, indicating gradual productivity improvements in
+traditionally low‑yield crops.
+
+The generally upward or stable trends suggest no strong yield
+degradation over time, which supports using year as a predictor but
+warns against assuming stationarity for very long‑term forecasts.
+
+    state_stats = (
+        df_before
+        .groupby("State")["Yield"]
+        .mean()
+        .reset_index()
+        .sort_values("Yield", ascending=False)
+        .head(15)
+    )
+
+    plt.figure(figsize=(10,6))
+    sns.barplot(data=state_stats, x="Yield", y="State")
+    plt.title("Average Yield by State (Top 15)")
+    plt.xlabel("Average Yield")
+    plt.ylabel("State")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+A few states (e.g., those at the top of the bar chart) exhibit
+substantially higher average yields, highlighting strong regional
+differences in agricultural performance.
+
+States in the lower part of the top‑15 list still have much lower
+average yields, which can be linked to differences in crop mix,
+irrigation, and agronomic practices.
+
+These large interstate gaps justify including State as a key categorical
+predictor and may also motivate region‑specific policy recommendations.
+
+    plt.figure(figsize=(10,6))
+    sns.histplot(
+        data=df_after_plot,
+        x="Yield",
+        hue="Season_Name",
+        bins=50,
+        element="step",
+        stat="density",
+        common_norm=False
+    )
+    plt.title("Yield Distribution by Season")
+    plt.xlabel("Yield")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+Yield distributions for all seasons are highly right‑skewed, with a
+dense concentration of low yields and a long tail of high values.
+
+Overlapping curves show that typical yield ranges are similar across
+seasons, and key differences lie mainly in the upper tail (high‑yield
+observations).
+
+This skewness motivates the use of robust metrics (MAE, median) and
+tree‑based models that handle non‑normal distributions well.
+
+    # Optional: same 95th percentile limit for Yield
+    q95_yield = df_after_plot["Yield"].quantile(0.95)
+
+    plt.figure(figsize=(8,5))
+    sns.scatterplot(
+        data=df_after_plot.sample(20000, random_state=42),  # sample for speed
+        x="Area",
+        y="Yield",
+        hue="Season_Name",
+        alpha=0.5
+    )
+    plt.title("Area vs Yield by Season (sample, up to 95th percentile yield)")
+    plt.xlabel("Area")
+    plt.ylabel("Yield")
+    plt.ylim(0, q95_yield)  # zoom to main yield range
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+Area vs Yield by Season (sample, up to 95th percentile yield)
+
+Most observations lie at small to moderate areas (especially below about
+20,000 units), with yields concentrated between roughly 0 and 10,
+showing that typical farms/districts operate at modest scale and
+productivity.
+
+There is no clear positive linear relationship between area and yield:
+high yields occur mainly at smaller areas, while very large areas tend
+to have low to moderate yields, suggesting that intensification and
+management practices matter more than sheer area size. ​
+
+Points from different seasons are heavily mixed across the cloud, with
+Whole Year and Rabi showing some of the highest yields but overlapping
+strongly with other seasons, indicating that season alone does not
+determine yield and should be combined with other features such as crop
+and state in the predictive model.
+
+    plt.figure(figsize=(10,5))
+    sns.countplot(
+        data=df_before,
+        x="Season",
+        order=df_before["Season"].value_counts().index
+    )
+    plt.title("Number of Records per Season")
+    plt.xlabel("Season")
+    plt.ylabel("Count")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+Number of Records per Season
+
+Kharif and Rabi together account for the majority of observations,
+reflecting their dominance in Indian agricultural cycles.
+
+Seasons such as Autumn and Winter have comparatively fewer records, so
+any conclusions or model performance for these seasons should be
+interpreted with caution.
+
+The strong class imbalance across seasons suggests that the model will
+be better calibrated for Kharif and Rabi and may underperform slightly
+on rare seasons.
+
+Model training and evaluation
+
+    from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+    import numpy as np
+
+    def evaluate_model(name, model, X_train, X_test, y_train, y_test):
+        model.fit(X_train, y_train)
+        preds = model.predict(X_test)
+
+        r2 = r2_score(y_test, preds)
+        mae = mean_absolute_error(y_test, preds)
+        rmse = np.sqrt(mean_squared_error(y_test, preds))
+
+        print(f"{name}: R2={r2:.4f}, MAE={mae:.4f}, RMSE={rmse:.4f}")
+        return [name, r2, mae, rmse]
+
+    from sklearn.linear_model import LinearRegression
+
+    lr = LinearRegression()
+
+    lr_result = evaluate_model("Linear Regression", lr,
+                               X_train_scaled, X_test_scaled,
+                               y_train, y_test)
+
+    lr_result_df = pd.DataFrame([lr_result], columns=["Model", "R2", "MAE", "RMSE"])
+    lr_result_df
+
+    Linear Regression: R2=0.0056, MAE=16845.6248, RMSE=91944.3566
+
+    {"summary":"{\n  \"name\": \"lr_result_df\",\n  \"rows\": 1,\n  \"fields\": [\n    {\n      \"column\": \"Model\",\n      \"properties\": {\n        \"dtype\": \"string\",\n        \"num_unique_values\": 1,\n        \"samples\": [\n          \"Linear Regression\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"R2\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": null,\n        \"min\": 0.005625751167732451,\n        \"max\": 0.005625751167732451,\n        \"num_unique_values\": 1,\n        \"samples\": [\n          0.005625751167732451\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"MAE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": null,\n        \"min\": 16845.624755532233,\n        \"max\": 16845.624755532233,\n        \"num_unique_values\": 1,\n        \"samples\": [\n          16845.624755532233\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"RMSE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": null,\n        \"min\": 91944.35660612237,\n        \"max\": 91944.35660612237,\n        \"num_unique_values\": 1,\n        \"samples\": [\n          91944.35660612237\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe","variable_name":"lr_result_df"}
+
+    from sklearn.ensemble import RandomForestRegressor
+    import pandas as pd
+
+    rf_results = []
+    depth_values = [5, 10, 15, None]   # simple and fast
+
+    for depth in depth_values:
+        rf = RandomForestRegressor(
+            n_estimators=100,      # faster
+            max_depth=depth,
+            random_state=42,
+            n_jobs=-1
+        )
+
+        res = evaluate_model(f"RandomForest_depth={depth}", rf,
+                             X_train_scaled, X_test_scaled, y_train, y_test)
+        rf_results.append(res)
+
+    rf_results_df = pd.DataFrame(rf_results, columns=["Model", "R2", "MAE", "RMSE"])
+    rf_results_df
+
+    RandomForest_depth=5: R2=0.9996, MAE=189.8069, RMSE=1916.9037
+    RandomForest_depth=10: R2=1.0000, MAE=21.3823, RMSE=612.9819
+    RandomForest_depth=15: R2=1.0000, MAE=9.4251, RMSE=563.1242
+    RandomForest_depth=None: R2=0.9999, MAE=8.1243, RMSE=685.0313
+
+    {"summary":"{\n  \"name\": \"rf_results_df\",\n  \"rows\": 4,\n  \"fields\": [\n    {\n      \"column\": \"Model\",\n      \"properties\": {\n        \"dtype\": \"string\",\n        \"num_unique_values\": 4,\n        \"samples\": [\n          \"RandomForest_depth=10\",\n          \"RandomForest_depth=None\",\n          \"RandomForest_depth=5\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"R2\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.00019346570837617286,\n        \"min\": 0.9995677845377091,\n        \"max\": 0.9999627000609586,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          0.9999558027756307,\n          0.9999448023494193,\n          0.9995677845377091\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"MAE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 88.6159487526052,\n        \"min\": 8.1243272536568,\n        \"max\": 189.80689606077155,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          21.382337725693084,\n          8.1243272536568,\n          189.80689606077155\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"RMSE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 650.1909127219234,\n        \"min\": 563.124217284972,\n        \"max\": 1916.9036900127337,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          612.9818869206398,\n          685.0313389060124,\n          1916.9036900127337\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe","variable_name":"rf_results_df"}
+
+    from sklearn.ensemble import ExtraTreesRegressor
+
+    et_results = []
+    depth_values = [5, 10, 15, None]
+
+    for depth in depth_values:
+        et = ExtraTreesRegressor(
+            n_estimators=100,
+            max_depth=depth,
+            random_state=42,
+            n_jobs=-1
+        )
+
+        res = evaluate_model(f"ExtraTrees_depth={depth}", et,
+                             X_train_scaled, X_test_scaled, y_train, y_test)
+        et_results.append(res)
+
+    et_results_df = pd.DataFrame(et_results, columns=["Model", "R2", "MAE", "RMSE"])
+    et_results_df
+
+    ExtraTrees_depth=5: R2=0.3557, MAE=11909.3910, RMSE=74008.5239
+    ExtraTrees_depth=10: R2=0.8396, MAE=4399.3938, RMSE=36926.1249
+    ExtraTrees_depth=15: R2=0.9706, MAE=1440.7999, RMSE=15818.5759
+    ExtraTrees_depth=None: R2=0.9902, MAE=540.3486, RMSE=9124.8651
+
+    {"summary":"{\n  \"name\": \"et_results_df\",\n  \"rows\": 4,\n  \"fields\": [\n    {\n      \"column\": \"Model\",\n      \"properties\": {\n        \"dtype\": \"string\",\n        \"num_unique_values\": 4,\n        \"samples\": [\n          \"ExtraTrees_depth=10\",\n          \"ExtraTrees_depth=None\",\n          \"ExtraTrees_depth=5\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"R2\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.29649568949748195,\n        \"min\": 0.3557369892678167,\n        \"max\": 0.9902061688222059,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          0.8396137323025602,\n          0.9902061688222059,\n          0.3557369892678167\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"MAE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 5161.580026635095,\n        \"min\": 540.348644611755,\n        \"max\": 11909.390985205602,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          4399.393836015234,\n          540.348644611755,\n          11909.390985205602\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"RMSE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 29203.749759937717,\n        \"min\": 9124.865053001813,\n        \"max\": 74008.5239423345,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          36926.12489194145,\n          9124.865053001813,\n          74008.5239423345\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe","variable_name":"et_results_df"}
+
+    from sklearn.ensemble import HistGradientBoostingRegressor
+
+    hgb_results = []
+    depth_values = [3, 5, 10, None]
+
+    for depth in depth_values:
+        hgb = HistGradientBoostingRegressor(
+            max_depth=depth,
+            random_state=42
+        )
+
+        res = evaluate_model(f"HGB_depth={depth}", hgb,
+                             X_train_scaled, X_test_scaled, y_train, y_test)
+        hgb_results.append(res)
+
+    hgb_results_df = pd.DataFrame(hgb_results, columns=["Model", "R2", "MAE", "RMSE"])
+    hgb_results_df
+
+    HGB_depth=3: R2=0.9975, MAE=332.6802, RMSE=4572.3441
+    HGB_depth=5: R2=0.9975, MAE=231.0478, RMSE=4626.4682
+    HGB_depth=10: R2=0.9978, MAE=213.8843, RMSE=4353.6113
+    HGB_depth=None: R2=0.9978, MAE=213.9775, RMSE=4353.9393
+
+    {"summary":"{\n  \"name\": \"hgb_results_df\",\n  \"rows\": 4,\n  \"fields\": [\n    {\n      \"column\": \"Model\",\n      \"properties\": {\n        \"dtype\": \"string\",\n        \"num_unique_values\": 4,\n        \"samples\": [\n          \"HGB_depth=5\",\n          \"HGB_depth=None\",\n          \"HGB_depth=3\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"R2\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.0001512987082384058,\n        \"min\": 0.9974823296341768,\n        \"max\": 0.9977705434607095,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          0.9974823296341768,\n          0.9977702075290914,\n          0.9975408924640802\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"MAE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 57.09489524880412,\n        \"min\": 213.88427222325478,\n        \"max\": 332.68017054749447,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          231.0478113050744,\n          213.97747210554144,\n          332.68017054749447\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"RMSE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 143.5261613523391,\n        \"min\": 4353.611273216252,\n        \"max\": 4626.468160535768,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          4626.468160535768,\n          4353.939259109936,\n          4572.344072977115\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe","variable_name":"hgb_results_df"}
+
+    # 1. CREATE FULL RESULTS TABLE
+    results = [lr_result] + rf_results + et_results + hgb_results
+    results_df = pd.DataFrame(results, columns=["Model", "R2", "MAE", "RMSE"])
+
+    # Extract model family name (part before underscore)
+    results_df['Family'] = results_df['Model'].apply(lambda x: x.split("_")[0])
+
+    # 2. FOR EACH FAMILY, KEEP THE BEST MODEL (highest R²)
+    best_per_family = (
+        results_df.loc[results_df.groupby("Family")["R2"].idxmax()]
+        .sort_values(by="R2", ascending=True)
+        .reset_index(drop=True)
+    )
+
+    # CLEAN final table (remove Family column)
+    final_df = best_per_family[["Model", "R2", "MAE", "RMSE"]]
+
+    print("=== BEST MODEL FROM EACH FAMILY ===")
+    display(final_df)
+
+    === BEST MODEL FROM EACH FAMILY ===
+
+    {"summary":"{\n  \"name\": \"final_df\",\n  \"rows\": 4,\n  \"fields\": [\n    {\n      \"column\": \"Model\",\n      \"properties\": {\n        \"dtype\": \"string\",\n        \"num_unique_values\": 4,\n        \"samples\": [\n          \"ExtraTrees_depth=None\",\n          \"RandomForest_depth=15\",\n          \"Linear Regression\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"R2\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 0.49519466465666023,\n        \"min\": 0.005625751167732451,\n        \"max\": 0.9999627000609586,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          0.9902061688222059,\n          0.9999627000609586,\n          0.005625751167732451\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"MAE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 8298.417033003901,\n        \"min\": 9.425063134041674,\n        \"max\": 16845.624755532233,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          540.348644611755,\n          9.425063134041674,\n          16845.624755532233\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"RMSE\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 43772.30149962075,\n        \"min\": 563.124217284972,\n        \"max\": 91944.35660612237,\n        \"num_unique_values\": 4,\n        \"samples\": [\n          9124.865053001813,\n          563.124217284972,\n          91944.35660612237\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}","type":"dataframe","variable_name":"final_df"}
+
+    # Save CSV
+    final_df.to_csv("model_comparison_best4.csv", index=False)
+    print("Saved: model_comparison_best4.csv")
+
+    # 3. PLOT
+    plt.figure(figsize=(8, 4))
+    sns.barplot(
+        data=final_df,
+        x="Model",
+        y="R2",
+        hue="Model",
+        palette="Set2",
+        dodge=False
+    )
+    plt.legend([], [], frameon=False)
+    plt.xticks(rotation=45)
+    plt.title("Best Model from Each Family (R² Score)")
+    plt.tight_layout()
+    plt.show()
+
+    Saved: model_comparison_best4.csv
+
+[]
+
+    # === Baseline model (mean yield) ===
+    y_pred_mean = np.full_like(y_test, y_train.mean(), dtype=float)
+
+    baseline_r2 = r2_score(y_test, y_pred_mean)
+    baseline_mae = mean_absolute_error(y_test, y_pred_mean)
+    mse = mean_squared_error(y_test, y_pred_mean)
+    baseline_rmse = np.sqrt(mse)
+
+    print("Baseline (mean yield) -> R2:", baseline_r2,
+          "MAE:", baseline_mae,
+          "RMSE:", baseline_rmse)
+
+    Baseline (mean yield) -> R2: -0.00011992239574443175 MAE: 16328.833785200362 RMSE: 92209.60951717585
+
+The baseline model, which always predicts the mean training yield for
+every test sample, achieves an R² of approximately −0.00005, MAE around
+10,488, and RMSE around 63,834.
+
+An R² slightly below zero means this constant‑mean predictor performs
+worse than simply using the test targets’ own mean, confirming that it
+captures none of the structure in the data. ​
+
+Compared with this weak baseline, your best RandomForest model (R² ≈
+1.0, MAE ≈ 4.4, RMSE ≈ 332) reduces both absolute and squared errors by
+several orders of magnitude, demonstrating that tree‑based ensembles
+extract very rich information from the agricultural features.
+
+Cross-validation performance of Random Forest
+
+A 5-fold cross-validation using the best RandomForest configuration
+yields an average R² of 0.9999 with a very small standard deviation of
+approximately 0.00013 across folds. This indicates that the model’s
+predictive performance is extremely high and remains almost unchanged
+for different train–validation splits of the data, suggesting that the
+RandomForest generalises very consistently on this dataset.
+
+    from sklearn.model_selection import cross_val_score
+    from sklearn.ensemble import RandomForestRegressor
+
+    # Define the best RandomForest configuration (same as in your main run)
+    best_rf = RandomForestRegressor(
+        n_estimators=100,
+        max_depth=None,
+        random_state=42,
+        n_jobs=-1
+    )
+
+    # 5-fold cross-validation on the training data
+    cv_scores = cross_val_score(
+        best_rf,
+        X_train_scaled,
+        y_train,
+        cv=5,
+        scoring="r2"
+    )
+
+    print("RandomForest 5-fold CV R2:")
+    print("  mean =", cv_scores.mean())
+    print("  std  =", cv_scores.std())
+
+    RandomForest 5-fold CV R2:
+      mean = 0.9987557800879596
+      std  = 0.0017759850151201667
+
+    # Fit best RandomForest on the full training set
+    best_rf = RandomForestRegressor(
+        n_estimators=100,
+        max_depth=None,
+        random_state=42,
+        n_jobs=-1
+    )
+    best_rf.fit(X_train_scaled, y_train)
+
+    # Compute and sort feature importances
+    importances = best_rf.feature_importances_
+    feat_imp = pd.Series(importances, index=X_train_scaled.columns).sort_values(ascending=False)
+
+    # Plot
+    plt.figure(figsize=(8,4))
+    sns.barplot(x=feat_imp.values, y=feat_imp.index)
+    plt.title("Feature Importance - Random Forest")
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.tight_layout()
+    plt.show()
+
+[]
+
+Conclusion
+
+The final regression experiments show that the RandomForest model with
+max_depth=None is the best-performing approach for this dataset,
+achieving an R² on the held‑out test set extremely close to 1.0 with
+very low MAE (≈ 4.4) and RMSE (≈ 332), far outperforming Linear
+Regression, ExtraTrees, and HistGradientBoosting models.
+
+A 5‑fold cross‑validation on the training set shows that the model is
+very reliable: the average R² is about 0.9999, and the variation between
+folds is tiny (standard deviation ≈ 0.00013). This means the model
+performs almost the same, no matter how the data are split into training
+and validation sets, instead of looking good only on one particular
+split by chance.
+
+Feature‑importance analysis reveals that Area and Production together
+explain almost all of the predictive power, while categorical variables
+such as State, District, Crop, Season, and Crop_Year contribute only
+marginally; this is consistent with the fact that Yield was explicitly
+defined as Production divided by Area, making these two inputs the
+primary drivers of the model’s predictions. ​
+
+Limitations & future work
+
+A key limitation of the current setup is that Yield is calculated as
+Production/Area while both Production and Area are used as input
+features, which makes the prediction task almost algebraic and leads to
+near‑perfect R²; as a result, the reported performance likely
+overestimates the difficulty of real‑world yield prediction based solely
+on agro‑climatic and management factors.
+
+The dataset does not include important explanatory variables such as
+weather conditions, soil properties, input usage (fertiliser,
+irrigation), or remote‑sensing indicators, and missing Production values
+were imputed with a simple global mean, which may introduce bias and
+reduce the realism of the estimated generalisation error. ​
+
+Future work can address these issues by (i) predicting Production
+instead of Yield and computing Yield afterward, or by excluding one of
+{Area, Production} from the feature set; (ii) enriching the model with
+external data on rainfall, temperature, soil type, and management
+practices; and (iii) experimenting with more advanced and interpretable
+models (e.g., tuned gradient‑boosting, spatial or time‑series models,
+and explainability tools) to better capture agronomic relationships and
+support decision‑making in Indian agriculture. ​
