@@ -37,6 +37,19 @@ Additional project materials
 - Matplotlib
 - Jupyter Notebook
 
+## Project Workflow
+
+The project follows a standard machine learning pipeline:
+
+1. Data loading and inspection
+2. Data cleaning and preprocessing
+3. Outlier detection
+4. Feature encoding and scaling
+5. Model training and evaluation
+6. Model comparison and interpretation
+
+![Workflow](figures/project_workflow.png)
+
 ## Author
 
 Sandeep Kumar Yadav Gandu  
