@@ -80,6 +80,8 @@ Best performing model:
 Random Forest Regressor  
 R² Score ≈ 0.99
 
+![Model Results](results/model_results.png)
+
 This demonstrates that ensemble learning methods can effectively capture complex nonlinear relationships in agricultural data.
 
 ---
