@@ -78,7 +78,7 @@ The ensemble models significantly outperformed the baseline regression model.
 Best performing model:
 
 Random Forest Regressor  
-R² Score ≈ 0.96
+R² Score ≈ 0.99
 
 This demonstrates that ensemble learning methods can effectively capture complex nonlinear relationships in agricultural data.
 
@@ -111,5 +111,5 @@ Future improvements may include:
 ## Author
 
 Sandeep Kumar Yadav Gandu  
-MSc Advanced Computer Science  
+MSc Data Science and Analytics 
 University of Hertfordshire
