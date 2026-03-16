@@ -1,4 +1,4 @@
-# Crop Yield Prediction using Ensemble Machine Learning
+# Predicting Crop Yield in India using Ensemble and Machine Learning Models:
 
 MSc Advanced Computer Science Masters Project  
 University of Hertfordshire  
